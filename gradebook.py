@@ -1,8 +1,7 @@
-import tkinter as tk
-from tkinter import ttk
 import math
+import openpyxl
 
-class student():
+class Student():
     def __init__(self, name, hw, test):
         self.name = name
         self.hw = hw
@@ -10,8 +9,18 @@ class student():
         self.hlTest = 0
         self.hTest = 0
         self.hwGrade = 0
+        self.quarterAvg = 0
         self.gradedHw = []
         self.gradedTests = []
+        self.letters = {}
+
+    def update(self):
+        self.gradeHw()
+        self.hwAverage()
+        self.gradeTests()
+        self.hlTestGrade()
+        self.qAverage(15, 85)
+        self.letterGrade()
 
     def gradeHw(self):
         self.gradedHw = [self.hw[i] / self.maxHwGrades[i] for i in range(len(self.hw))]
@@ -39,13 +48,34 @@ class student():
 
     def hlTestGrade(self):
         tw = self.testWeights
-        tw[-1] = 2
+        tw[-1] = 5
         g1 = self.testAverage()
         tw[-1] = 1.5
         g2 = self.testAverage()
         self.hlTest = g1, g2
         self.hTest = max(g1, g2)
         return g1, g2
+
+    def qAverage(self, w1, w2):
+        tw = w1 + w2
+        w1 /= tw
+        w2 /= tw
+        self.quarterAvg = self.hwGrade * w1 + self.hTest *  w2
+        return self.quarterAvg
+
+    def letterGrade(self):
+        hTest = letter(self.hTest)
+        hwGrade = letter(self.hwGrade)
+        quarterAvg = letter(self.quarterAvg)
+        gradedHw = list(map(letter, self.gradedHw))
+        gradedTests = list(map(letter, self.gradedTests))
+        self.letters = {"hTest": hTest,
+                        "hwGrade": hwGrade,
+                        "quarterAvg": quarterAvg,
+                        "gradedHw": gradedHw,
+                        "gradedTests": gradedTests}
+        return self.letters
+        
 
 def arithMean(arr):
     return sum(arr) / len(arr)
@@ -86,9 +116,25 @@ def standardDev(arr):
     m = arithMean(arr)
     return (sum([(i - m) ** 2 for i in arr]) / len(arr)) ** 0.5
 
+def countLetters(arr):
+    l = [0, 0, 0, 0, 0]
+    for g in arr:
+        if g == "A":
+            l[0] += 1
+        elif g == "B":
+            l[1] += 1
+        elif g == "C":
+            l[2] += 1
+        elif g == "D":
+            l[3] += 1
+        elif g == "F":
+            l[4] += 1
+    return l
+
 def dist(students):
     hw = [student.hw for student in students]
     tests = [student.tests for student in students]
+    qAvgs = [student.quarterAvg for student in students]
     avgHw = [student.hwGrade for student in students]
     avgTests = [student.hTest for student in students]
     
@@ -97,30 +143,192 @@ def dist(students):
     f = lambda n: (arithMean(n), geoMean(n), harmMean(n), median(n), mode(n), standardDev(n))
     hw = list(map(f, hw))
     tests = list(map(f, tests))
+    qAvgs = f(qAvgs)
     avgHw = f(avgHw)
     avgTests = f(avgTests)
-    return hw, tests, avgHw, avgTests
 
-students = []
-with open('data.csv', 'r') as file:
-    data = file.read().split(',,,,\n')
-    for i in data:
-        i = i.split(',,,')
-        i = list(map(lambda n: n.split(','), i))
-        if not i[0][0]:
-            continue
-        students.append(student(i[0][0], list(map(int, i[0][1:])), list(map(int, i[1]))))
-        students[-1].maxHwGrades = [10, 10, 10, 10, 8, 10, 10, 10, 10, 10]
-        students[-1].hwWeights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-        students[-1].maxTestGrades = [100, 85, 100, 100]
-        students[-1].testWeights = [1, 1, 1, 1.5]
+    hTestLetters = []
+    avgHwLetters = []
+    qAvgLetters = []
+    tHwLetters = [[] for i in range(len(students[0].hw))]
+    tTestLetters = [[] for i in range(len(students[0].tests))]
+    for student in students:
+        l = student.letters
+        hTest = l["hTest"]
+        hTestLetters.append(hTest)
+        hwGrade = l["hwGrade"]
+        avgHwLetters.append(hwGrade)
+        quarterAvg = l["quarterAvg"]
+        qAvgLetters.append(quarterAvg)
+        gradedHw = l["gradedHw"]
+        for i in range(len(gradedHw)):
+            tHwLetters[i].append(gradedHw[i])
+        gradedTests = l["gradedTests"]
+        for i in range(len(gradedTests)):
+            tTestLetters[i].append(gradedTests[i])
 
+    hTestLetters = countLetters(hTestLetters)
+    avgHwLetters = countLetters(avgHwLetters)
+    qAvgLetters = countLetters(qAvgLetters)
+    tHwLetters = list(map(countLetters, tHwLetters))
+    tTestLetters = list(map(countLetters, tTestLetters))
+    letterGrades = {"hTestLetters": hTestLetters,
+                    "avgHwLetters": avgHwLetters,
+                    "qAvgLetters": qAvgLetters,
+                    "tHwLetters": tHwLetters,
+                    "tTestLetters": tTestLetters}
+        
+    return {"hw": hw,
+            "tests": tests,
+            "qAvgs": qAvgs,
+            "avgHw": avgHw,
+            "avgTests": avgTests,
+            "letterGrades": letterGrades}
 
-for student in students:
-    student.gradeHw()
-    student.gradeTests()
+def letter(n):
+    n = round(n, 2)
+    if n >= cutoffs[0]:
+        return "A"
+    if n >= cutoffs[1]:
+        return "B"
+    if n >= cutoffs[2]:
+        return "C"
+    if n >= cutoffs[3]:
+        return "D"
+    return "F"
 
-    print(student.hwAverage())
-    print(student.hlTestGrade())
-    print('\n')
-print(dist(students))
+if __name__ == "__main__":
+    students = []
+    cutoffs = [0.9, 0.8, 0.7, 0.65]
+    testCutoff = 0.7
+    with open('data.csv', 'r') as file:
+        data = file.read().split(',,,,\n')
+        for i in data:
+            i = i.split(',,,')
+            i = list(map(lambda n: n.split(','), i))
+            if not i[0][0]:
+                continue
+            students.append(Student(i[0][0], list(map(int, i[0][1:])), list(map(int, i[1]))))
+            students[-1].maxHwGrades = [10, 10, 10, 10, 8, 10, 10, 10, 10, 10]
+            students[-1].hwWeights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+            students[-1].maxTestGrades = [100, 85, 100, 100]
+            students[-1].testWeights = [1, 1, 1, 1.5]
+
+    for student in students:
+        student.update()
+    d = dist(students)
+    file = openpyxl.load_workbook("./gradebook.xlsx")
+    file.create_sheet(str(int(file.sheetnames[-1]) + 1))
+    gb = file[file.sheetnames[-1]]
+
+    warningColor = openpyxl.styles.PatternFill(start_color='FF0000', end_color='FF0000', fill_type='solid')
+    row = 1
+    col = 1
+    gb.cell(row, col).value = "Name"
+    col += 1
+    for i in range(len(students[0].hw)):
+        gb.cell(row, col).value = f"Homework #{i + 1}"
+        col += 1
+    gb.cell(row, col).value = "Missed HW Assignments"
+    col += 1
+    gb.cell(row, col).value = "HW Average"
+    col += 1
+    for i in range(len(students[0].tests)):
+        gb.cell(row, col).value = f"Test #{i + 1}"
+        col += 1
+    gb.cell(row, col).value = "Failed Tests"
+    col += 1
+    gb.cell(row, col).value = "Test Averages"
+    col += 1
+    gb.cell(row, col).value = "Quarter Averages"
+    row += 1
+    for i in range(len(students)):
+        col = 1
+        gb.cell(row, col).value = student.name
+        col += 1
+        student = students[i]
+        for j in range(len(student.hw)):
+            gb.cell(row, col).value = f"{student.hw[j]} {round(student.gradedHw[j] * 100)}% {student.letters['gradedHw'][j]}"
+            if student.hw[j] == 0:
+                gb.cell(row, col).fill = warningColor
+            col += 1
+        gb.cell(row, col).value = student.hw.count(0)
+        col += 1
+        gb.cell(row, col).value = f"{round(student.hwGrade * 100)}% {student.letters['hwGrade']}"
+        col += 1
+        for j in range(len(student.tests)):
+            gb.cell(row, col).value = f"{student.tests[j]} {round(student.gradedTests[j] * 100)}% {student.letters['gradedTests'][j]}"
+            if student.gradedTests[j] < testCutoff:
+                gb.cell(row, col).fill = warningColor
+            col += 1
+        gb.cell(row, col).value = len(list(filter(lambda n: n < testCutoff, student.gradedTests)))
+        col += 1
+        gb.cell(row, col).value = f"{round(student.hTest * 100)}% {student.letters['hTest']}"
+        col += 1
+        gb.cell(row, col).value = f"{round(student.quarterAvg * 100)}% {student.letters['quarterAvg']}"
+        row += 1
+        
+    row += 1
+    names = ["Arithmatic Mean",
+             "Geometric Mean",
+             "Harmonic Mean",
+             "Median",
+             "Mode",
+             "Standard Deviation"]
+    for i in range(6):
+        row += 1
+        col = 1
+        gb.cell(row, col).value = names[i]
+        col += 1
+        for j in range(len(d["hw"])):
+            gb.cell(row, col).value = round(d["hw"][j][i], 1)
+            col += 1
+        col += 1
+        gb.cell(row, col).value = f"{round(d['avgHw'][i] * 100)}%"
+        col += 1
+        for j in range(len(d["tests"])):
+            gb.cell(row, col).value = round(d["tests"][j][i], 1)
+            col += 1
+        col += 1
+        gb.cell(row, col).value = f"{round(d['avgTests'][i] * 100)}%"
+        col += 1
+        gb.cell(row, col).value = f"{round(d['qAvgs'][i] * 100)}%"
+
+    row += 2
+    lg = ["A", "B", "C", "D", "F"]
+    for i in range(5):
+        col = 1
+        gb.cell(row, col).value = f"# of {lg[i]}'s:"
+        col += 1
+        l = d["letterGrades"]
+        for j in range(len(l["tHwLetters"])):
+            gb.cell(row, col).value = l["tHwLetters"][j][i]
+            col += 1
+        col += 1
+        gb.cell(row, col).value = l["avgHwLetters"][i]
+        col += 1
+        for j in range(len(l["tTestLetters"])):
+            gb.cell(row, col).value = l["tTestLetters"][j][i]
+            col += 1
+        col += 1
+        gb.cell(row, col).value = l["hTestLetters"][i]
+        col += 1
+        gb.cell(row, col).value = l["qAvgLetters"][i]
+        row += 1
+
+    alignment = openpyxl.styles.Alignment(horizontal = "left", vertical = "center")
+    
+    for col in gb.columns:
+        mSize = 0
+        for cell in col:
+            if cell.value != None and cell.row != 1:
+                cell.alignment = alignment
+                mSize = max(mSize, len(str(cell.value)))
+        gb.column_dimensions[col[0].column_letter].width = max(mSize, 5)
+    alignment = openpyxl.styles.Alignment(textRotation = 90, horizontal = "left", vertical = "center")
+    for row in gb.rows:
+        for cell in row:
+            cell.alignment = alignment
+        break
+    
+    file.save("gradebook.xlsx")
