@@ -18,8 +18,8 @@ class Student():
         self.gradeHw()
         self.hwAverage()
         self.gradeTests()
-        self.hlTestGrade()
-        self.qAverage(15, 85)
+        self.hlTestGrade(w1, w2)
+        self.qAverage(w3, w4)
         self.letterGrade()
 
     def gradeHw(self):
@@ -46,11 +46,11 @@ class Student():
         maxTestScores = [self.maxTestGrades[i] * self.testWeights[i] for i in range(len(self.maxTestGrades))]
         return sum(testScores) / sum(maxTestScores)
 
-    def hlTestGrade(self):
+    def hlTestGrade(self, w1, w2):
         tw = self.testWeights
-        tw[-1] = 5
+        tw[-1] = w1
         g1 = self.testAverage()
-        tw[-1] = 1.5
+        tw[-1] = w2
         g2 = self.testAverage()
         self.hlTest = g1, g2
         self.hTest = max(g1, g2)
@@ -88,7 +88,7 @@ def geoMean(arr):
 
 def harmMean(arr):
     if 0 in arr:
-        return -1
+        return 0
     return len(arr) / sum(map(lambda n: 1 / n, arr))
 
 def median(arr):
@@ -132,14 +132,17 @@ def countLetters(arr):
     return l
 
 def dist(students):
-    hw = [student.hw for student in students]
-    tests = [student.tests for student in students]
+    #getting data
+    hw = [student.gradedHw for student in students]
+    tests = [student.gradedTests for student in students]
     qAvgs = [student.quarterAvg for student in students]
     avgHw = [student.hwGrade for student in students]
     avgTests = [student.hTest for student in students]
-    
+
+    #same assignments are grouped together
     hw = [[hw[i][j] for i in range(len(hw))] for j in range(len(hw[0]))]
     tests = [[tests[i][j] for i in range(len(tests))] for j in range(len(tests[0]))]
+    #arr -> list of stats
     f = lambda n: (arithMean(n), geoMean(n), harmMean(n), median(n), mode(n), standardDev(n))
     hw = list(map(f, hw))
     tests = list(map(f, tests))
@@ -152,6 +155,7 @@ def dist(students):
     qAvgLetters = []
     tHwLetters = [[] for i in range(len(students[0].hw))]
     tTestLetters = [[] for i in range(len(students[0].tests))]
+    #getting grades for letter counting
     for student in students:
         l = student.letters
         hTest = l["hTest"]
@@ -198,9 +202,15 @@ def letter(n):
     return "F"
 
 if __name__ == "__main__":
+    #input
     students = []
+    #grade letter cutoffs
     cutoffs = [0.9, 0.8, 0.7, 0.65]
     testCutoff = 0.7
+    #final weights
+    w1, w2 = 1.5, 2
+    #hw & test weights
+    w3, w4 = 15, 85
     with open('data.csv', 'r') as file:
         data = file.read().split(',,,,\n')
         for i in data:
@@ -214,6 +224,7 @@ if __name__ == "__main__":
             students[-1].maxTestGrades = [100, 85, 100, 100]
             students[-1].testWeights = [1, 1, 1, 1.5]
 
+    #updates values for students
     for student in students:
         student.update()
     d = dist(students)
@@ -221,9 +232,10 @@ if __name__ == "__main__":
     file.create_sheet(str(int(file.sheetnames[-1]) + 1))
     gb = file[file.sheetnames[-1]]
 
-    warningColor = openpyxl.styles.PatternFill(start_color='FF0000', end_color='FF0000', fill_type='solid')
+    warningColor = openpyxl.styles.PatternFill(start_color='DD1111', end_color='DD1111', fill_type='solid')
     row = 1
     col = 1
+    #fill in hw values
     gb.cell(row, col).value = "Name"
     col += 1
     for i in range(len(students[0].hw)):
@@ -233,13 +245,19 @@ if __name__ == "__main__":
     col += 1
     gb.cell(row, col).value = "HW Average"
     col += 1
+    #fill in test data
     for i in range(len(students[0].tests)):
         gb.cell(row, col).value = f"Test #{i + 1}"
         col += 1
     gb.cell(row, col).value = "Failed Tests"
     col += 1
+    gb.cell(row, col).value = f"Test Average with \nFinal Weight {w1}"
+    col += 1
+    gb.cell(row, col).value = f"Test Average with \nFinal Weight {w2}"
+    col += 1
     gb.cell(row, col).value = "Test Averages"
     col += 1
+    #final quarter grade
     gb.cell(row, col).value = "Quarter Averages"
     row += 1
     for i in range(len(students)):
@@ -247,6 +265,7 @@ if __name__ == "__main__":
         gb.cell(row, col).value = student.name
         col += 1
         student = students[i]
+        #fill in hw grades
         for j in range(len(student.hw)):
             gb.cell(row, col).value = f"{student.hw[j]} {round(student.gradedHw[j] * 100)}% {student.letters['gradedHw'][j]}"
             if student.hw[j] == 0:
@@ -256,6 +275,7 @@ if __name__ == "__main__":
         col += 1
         gb.cell(row, col).value = f"{round(student.hwGrade * 100)}% {student.letters['hwGrade']}"
         col += 1
+        #filling in test grades and failed tests
         for j in range(len(student.tests)):
             gb.cell(row, col).value = f"{student.tests[j]} {round(student.gradedTests[j] * 100)}% {student.letters['gradedTests'][j]}"
             if student.gradedTests[j] < testCutoff:
@@ -263,11 +283,16 @@ if __name__ == "__main__":
             col += 1
         gb.cell(row, col).value = len(list(filter(lambda n: n < testCutoff, student.gradedTests)))
         col += 1
+        gb.cell(row, col).value = f"{round(student.hlTest[0] * 100)}%"
+        col += 1
+        gb.cell(row, col).value = f"{round(student.hlTest[1] * 100)}%"
+        col += 1
         gb.cell(row, col).value = f"{round(student.hTest * 100)}% {student.letters['hTest']}"
         col += 1
         gb.cell(row, col).value = f"{round(student.quarterAvg * 100)}% {student.letters['quarterAvg']}"
         row += 1
-        
+
+    #stats: mean, median, mode, standard deviation
     row += 1
     names = ["Arithmatic Mean",
              "Geometric Mean",
@@ -281,20 +306,23 @@ if __name__ == "__main__":
         gb.cell(row, col).value = names[i]
         col += 1
         for j in range(len(d["hw"])):
-            gb.cell(row, col).value = round(d["hw"][j][i], 1)
+            gb.cell(row, col).value = f'{round(d["hw"][j][i] * 100)}%'
             col += 1
         col += 1
         gb.cell(row, col).value = f"{round(d['avgHw'][i] * 100)}%"
         col += 1
         for j in range(len(d["tests"])):
-            gb.cell(row, col).value = round(d["tests"][j][i], 1)
+            gb.cell(row, col).value = f'{round(d["tests"][j][i] * 100)}%'
             col += 1
+        col += 1
+        col += 1
         col += 1
         gb.cell(row, col).value = f"{round(d['avgTests'][i] * 100)}%"
         col += 1
         gb.cell(row, col).value = f"{round(d['qAvgs'][i] * 100)}%"
 
     row += 2
+    #filling in letter grades
     lg = ["A", "B", "C", "D", "F"]
     for i in range(5):
         col = 1
@@ -311,24 +339,46 @@ if __name__ == "__main__":
             gb.cell(row, col).value = l["tTestLetters"][j][i]
             col += 1
         col += 1
+        col += 1
+        col += 1
         gb.cell(row, col).value = l["hTestLetters"][i]
         col += 1
         gb.cell(row, col).value = l["qAvgLetters"][i]
         row += 1
 
+    #style changes
     alignment = openpyxl.styles.Alignment(horizontal = "left", vertical = "center")
-    
+
     for col in gb.columns:
         mSize = 0
         for cell in col:
             if cell.value != None and cell.row != 1:
                 cell.alignment = alignment
                 mSize = max(mSize, len(str(cell.value)))
-        gb.column_dimensions[col[0].column_letter].width = max(mSize, 5)
-    alignment = openpyxl.styles.Alignment(textRotation = 90, horizontal = "left", vertical = "center")
+        gb.column_dimensions[col[0].column_letter].width = max(mSize + 3, 10)
+    alignment = openpyxl.styles.Alignment(textRotation = 90, horizontal = "center", vertical = "center")
+    gb.row_dimensions[1].height = 150
     for row in gb.rows:
         for cell in row:
             cell.alignment = alignment
         break
     
+    bgColor = openpyxl.styles.PatternFill(start_color='222222', end_color='222222', fill_type='solid')
+    textColor = openpyxl.styles.Color("00EEEEEE")
+    font = openpyxl.styles.fonts.Font(name = "Aptos Narrow", color = textColor)
+    borderColor = openpyxl.styles.Color("00BBBBBB")
+    side = openpyxl.styles.borders.Side(style = "thin", color = borderColor)
+    border = openpyxl.styles.borders.Border(left = side, right = side, top = side, bottom = side)
+    for i in range(1, len(students) + 116):
+        for j in range(1, len(student.hw) + len(student.tests) + 109):
+            if gb.cell(i, j).fill != warningColor:
+                gb.cell(i, j).fill = bgColor
+    for i in range(1, len(students) + 16):
+        if gb.cell(i, 1).value != None:
+            for j in range(1, len(student.hw) + len(student.tests) + 9):
+                gb.cell(i, j).font = font
+                gb.cell(i, j).border = border
+                if gb.cell(i, j).value == None:
+                    gb.cell(i, j).value = "N/A"
+    #save file
     file.save("gradebook.xlsx")
