@@ -205,24 +205,32 @@ if __name__ == "__main__":
     #input
     students = []
     #grade letter cutoffs
-    cutoffs = [0.9, 0.8, 0.7, 0.65]
-    testCutoff = 0.7
-    #final weights
-    w1, w2 = 1.5, 2
-    #hw & test weights
-    w3, w4 = 15, 85
-    with open('data.csv', 'r') as file:
-        data = file.read().split(',,,,\n')
-        for i in data:
+    with open('data2.csv', 'r') as file:
+        data = file.read().split('\n')
+        data[0] = data[0].split(",,,")
+        data[1] = data[1].split(",,,")
+        maxHwGrades = list(map(float, data[0][0].split(",")))
+        maxTestGrades = list(map(float, data[0][1].split(",")))
+        hwWeights = list(map(float, data[1][0].split(",")))
+        testWeights = list(map(float, data[1][1].split(",")))[:-2] + [0]
+        #grade letter cutoffs
+        cutoffs = list(map(float, data[2].split(",")[:-1]))
+        testCutoff = float(data[2].split(",")[-1])
+        dMode = int(data[4])
+        #final weights
+        w1, w2 = map(float, data[1][1].split(",")[-2:])
+        #test & hw weights
+        w3, w4 = map(float, data[3].split(","))
+        for i in data[6:]:
             i = i.split(',,,')
             i = list(map(lambda n: n.split(','), i))
             if not i[0][0]:
                 continue
-            students.append(Student(i[0][0], list(map(int, i[0][1:])), list(map(int, i[1]))))
-            students[-1].maxHwGrades = [10, 10, 10, 10, 8, 10, 10, 10, 10, 10]
-            students[-1].hwWeights = [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
-            students[-1].maxTestGrades = [100, 85, 100, 100]
-            students[-1].testWeights = [1, 1, 1, 1.5]
+            students.append(Student(i[0][0], list(map(float, i[0][1:])), list(map(float, i[1]))))
+            students[-1].maxHwGrades = maxHwGrades
+            students[-1].hwWeights = hwWeights
+            students[-1].maxTestGrades = maxTestGrades
+            students[-1].testWeights = testWeights
 
     #updates values for students
     for student in students:
@@ -267,17 +275,36 @@ if __name__ == "__main__":
         student = students[i]
         #fill in hw grades
         for j in range(len(student.hw)):
-            gb.cell(row, col).value = f"{student.hw[j]} {round(student.gradedHw[j] * 100)}% {student.letters['gradedHw'][j]}"
+            if dMode == 0:
+                gb.cell(row, col).value = f"{student.hw[j]} {round(student.gradedHw[j] * 100)}% {student.letters['gradedHw'][j]}"
+            elif dMode == 1:
+                gb.cell(row, col).value = student.hw[j]
+            elif dMode == 2:
+                gb.cell(row, col).value = f"{round(student.gradedHw[j] * 100)}%"
+            else:
+                gb.cell(row, col).value = student.letters['gradedHw'][j]
             if student.hw[j] == 0:
                 gb.cell(row, col).fill = warningColor
             col += 1
         gb.cell(row, col).value = student.hw.count(0)
         col += 1
-        gb.cell(row, col).value = f"{round(student.hwGrade * 100)}% {student.letters['hwGrade']}"
+        if dMode == 0:
+            gb.cell(row, col).value = f"{round(student.hwGrade * 100)}% {student.letters['hwGrade']}"
+        elif dMode == 3:
+            gb.cell(row, col).value = student.letters['hwGrade']
+        else:
+            gb.cell(row, col).value = f"{round(student.hwGrade * 100)}%"
         col += 1
         #filling in test grades and failed tests
         for j in range(len(student.tests)):
-            gb.cell(row, col).value = f"{student.tests[j]} {round(student.gradedTests[j] * 100)}% {student.letters['gradedTests'][j]}"
+            if dMode == 0:
+                gb.cell(row, col).value = f"{student.tests[j]} {round(student.gradedTests[j] * 100)}% {student.letters['gradedTests'][j]}"
+            elif dMode == 1:
+                gb.cell(row, col).value = student.tests[j]
+            elif dMode == 2:
+                gb.cell(row, col).value = f"{round(student.gradedTests[j] * 100)}%"
+            else:
+                gb.cell(row, col).value = student.letters['gradedTests'][j]
             if student.gradedTests[j] < testCutoff:
                 gb.cell(row, col).fill = warningColor
             col += 1
@@ -287,10 +314,21 @@ if __name__ == "__main__":
         col += 1
         gb.cell(row, col).value = f"{round(student.hlTest[1] * 100)}%"
         col += 1
-        gb.cell(row, col).value = f"{round(student.hTest * 100)}% {student.letters['hTest']}"
-        col += 1
-        gb.cell(row, col).value = f"{round(student.quarterAvg * 100)}% {student.letters['quarterAvg']}"
-        row += 1
+        if dMode == 0:
+            gb.cell(row, col).value = f"{round(student.hTest * 100)}% {student.letters['hTest']}"
+            col += 1
+            gb.cell(row, col).value = f"{round(student.quarterAvg * 100)}% {student.letters['quarterAvg']}"
+            row += 1
+        elif dMode == 3:
+            gb.cell(row, col).value = student.letters['hTest']
+            col += 1
+            gb.cell(row, col).value = student.letters['quarterAvg']
+            row += 1
+        else:
+            gb.cell(row, col).value = f"{round(student.hTest * 100)}%"
+            col += 1
+            gb.cell(row, col).value = f"{round(student.quarterAvg * 100)}%"
+            row += 1
 
     #stats: mean, median, mode, standard deviation
     row += 1
