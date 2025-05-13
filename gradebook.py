@@ -205,7 +205,7 @@ if __name__ == "__main__":
     #input
     students = []
     #grade letter cutoffs
-    with open('data2.csv', 'r') as file:
+    with open('data4.csv', 'r') as file:
         data = file.read().split('\n')
         data[0] = data[0].split(",,,")
         data[1] = data[1].split(",,,")
@@ -235,6 +235,8 @@ if __name__ == "__main__":
     #updates values for students
     for student in students:
         student.update()
+    #sorting students
+    students.sort(key = lambda s: s.quarterAvg)
     d = dist(students)
     file = openpyxl.load_workbook("./gradebook.xlsx")
     file.create_sheet(str(int(file.sheetnames[-1]) + 1))
